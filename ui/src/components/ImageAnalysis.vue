@@ -158,6 +158,7 @@
                           :width="80"
                           type="circle"
                           :color="getConfidenceColor(entity.confidence)"
+                          :format="() => (entity.confidence * 100).toFixed(1) + '%'"
                         />
                         <div class="score-labels">
                           <div>置信度</div>

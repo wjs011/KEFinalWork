@@ -974,6 +974,8 @@ async def analyze_image(
                 
                 # 计算平均置信度
                 avg_confidence = sum(entity["confidence"] for entity in detected_entities) / len(detected_entities) if detected_entities else 0
+                # 保留一位小数
+                avg_confidence = round(avg_confidence, 1)
                 
                 # 确定风险等级
                 if avg_confidence >= 0.8:
@@ -1286,7 +1288,7 @@ async def get_analysis_history(limit: int = 10):
                     "timestamp": record["timestamp"].strftime('%Y-%m-%d %H:%M:%S') if hasattr(record["timestamp"], 'strftime') else record["timestamp"],
                     "entity_count": record["entity_count"],
                     "detected_types": detected_types,
-                    "confidence": float(record["confidence"]),
+                    "confidence": round(float(record["confidence"]), 1),
                     "risk_level": record["risk_level"]
                 })
             
@@ -1302,6 +1304,10 @@ async def get_analysis_history(limit: int = 10):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+
 
 
 
