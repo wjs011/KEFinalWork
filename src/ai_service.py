@@ -301,8 +301,127 @@ class KimiService:
         
         logger.info(f"Mock推理: {entity_a} --[{relation}]--> {entity_c}")
         return relation
-
-
+    
+    def extract_high_level_nodes_by_rules(self, all_nodes: List[str], node_degrees: dict = None) -> set:
+        """
+        基于规则提取高级节点（稳定、可预测的方法）
+        
+        Args:
+            all_nodes: 所有节点名称列表
+            node_degrees: 节点度数字典 {node_name: degree}，可选
+        
+        Returns:
+            高级节点集合
+        """
+        if not all_nodes:
+            return set()
+        
+        high_level_nodes = set()
+        
+        # 1. 明确的类别关键词（这些一定是高级节点）
+        category_keywords = {
+            # 类别概念
+            '天牛', '线虫', '松属', '病害', '昆虫', '真菌', '病毒', '细菌',
+            # 技术/方法
+            '技术', '方法', '算法', '模型', '指数', '特征', '指标',
+            # 学科/领域
+            '学', '保护学', '昆虫学', '病理学', '检疫学', '生态学',
+            # 防治措施
+            '防治', '措施', '检疫', '监测', '诊断', '治疗',
+            # 地理/行政
+            '省份', '城市', '国家', '地区', '区域',
+            # 时间
+            '年份', '时间', '季节',
+            # 其他概念
+            '风险评估', '早期诊断', '生态服务', '能量代谢', '生理指标',
+            '基因', '代谢通路', '种群动态', '植被指数', '光谱特征',
+            '多尺度监测', '研究模型', '软件'
+        }
+        
+        # 2. 类别后缀模式
+        category_suffixes = [
+            '学', '技术', '方法', '措施', '防治', '监测', '诊断', '评估',
+            '指标', '特征', '指数', '模型', '算法', '通路'
+        ]
+        
+        # 3. 类别前缀模式
+        category_prefixes = [
+            '物理', '化学', '生物', '营林', '检疫', '分子', '遥感',
+            '森林', '林业', '生态', '环境'
+        ]
+        
+        for node in all_nodes:
+            node = node.strip()
+            if not node:
+                continue
+            
+            is_high_level = False
+            
+            # 规则1: 完全匹配类别关键词
+            if node in category_keywords:
+                is_high_level = True
+            
+            # 规则2: 短名称（1-3个字符）且包含类别词
+            elif len(node) <= 3:
+                for keyword in ['天牛', '线虫', '松属', '病害', '昆虫', '真菌']:
+                    if keyword in node:
+                        is_high_level = True
+                        break
+            
+            # 规则3: 以类别后缀结尾
+            elif any(node.endswith(suffix) for suffix in category_suffixes):
+                # 进一步检查：如果名称较短（<=6个字符），很可能是高级节点
+                if len(node) <= 6:
+                    is_high_level = True
+                # 或者如果以"学"结尾
+                elif node.endswith('学'):
+                    is_high_level = True
+            
+            # 规则4: 以类别前缀开头且名称较短
+            elif any(node.startswith(prefix) for prefix in category_prefixes):
+                if len(node) <= 8:
+                    is_high_level = True
+            
+            # 规则5: 基于节点度数（如果提供）
+            if not is_high_level and node_degrees:
+                degree = node_degrees.get(node, 0)
+                # 如果节点连接数很多（>=10），且名称较短（<=4个字符），可能是高级节点
+                if degree >= 10 and len(node) <= 4:
+                    # 进一步检查：不包含明显的具体物种特征
+                    if not any(modifier in node for modifier in ['松', '天牛', '线虫', '病']):
+                        is_high_level = True
+            
+            # 排除规则：如果包含类别词但更长，通常是具体实例
+            if is_high_level:
+                for category in ['天牛', '线虫', '松属', '病害', '松', '虫']:
+                    if category in node and len(node) > len(category) + 2:
+                        # 如果节点名称明显比类别词长，可能是具体实例
+                        is_high_level = False
+                        break
+            
+            if is_high_level:
+                high_level_nodes.add(node)
+        
+        logger.info(f"基于规则提取了 {len(high_level_nodes)} 个高级节点")
+        return high_level_nodes
+    
+    def extract_high_level_nodes(self, all_nodes: List[str], node_degrees: dict = None) -> set:
+        """
+        提取高级节点（概念性、抽象性、类别性的节点）
+        使用基于规则的方法，稳定、可预测
+        
+        Args:
+            all_nodes: 所有节点名称列表
+            node_degrees: 节点度数字典 {node_name: degree}，可选
+        
+        Returns:
+            高级节点集合
+        """
+        if not all_nodes:
+            return set()
+        
+        return self.extract_high_level_nodes_by_rules(all_nodes, node_degrees)
+    
 # 全局服务实例
 word2vec_service = None
 kimi_service = None
